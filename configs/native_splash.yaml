@@ -1,0 +1,8 @@
+flutter_native_splash:
+  web: false
+  color: "#FFFFFF"
+  color_dark: "#FFFFFF"
+  image: "/Users/mohammedfahjan/development/projects/digitsarts/exceedtoystore/assets/images/logo.png"
+  image_dark: "/Users/mohammedfahjan/development/projects/digitsarts/exceedtoystore/assets/images/logo.png"
+
+

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "214390228524",
+    "project_id": "exceed-toy-store",
+    "storage_bucket": "exceed-toy-store.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:214390228524:android:c19b70145e93011b5e7389",
+        "android_client_info": {
+          "package_name": "com.exceedtoystore.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "214390228524-pe644tj16l0iu1rqlu2dkara0oukd2gt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3dJFIS4-rgHT9BScoWbMwLzgst7e8sww"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "214390228524-pe644tj16l0iu1rqlu2dkara0oukd2gt.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "214390228524-l1fc54g9skusd1be5bt9s8cthi9brqef.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.exceedtoystore.app",
+                "app_store_id": "6449955756"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
