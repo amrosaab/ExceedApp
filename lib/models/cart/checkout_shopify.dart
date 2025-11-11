@@ -35,14 +35,15 @@ class CheckoutCart {
     this.email,
   });
 
-  factory CheckoutCart.fromJsonShopify(Map<String, dynamic> parsedJson) {
+  factory CheckoutCart.fromJsonShopify(Map<String, dynamic> parsedJson,{String langCode='en'}) {
     try {
       return CheckoutCart(
         id: parsedJson['id'],
         email: parsedJson['email'],
-        webUrl: parsedJson['webUrl'],
+        // webUrl: parsedJson['webUrl'],
+        webUrl:'${ parsedJson['checkoutUrl']}&locale=${langCode?.toLowerCase()}',
         subtotalPrice:
-            double.parse(parsedJson['subtotalPrice']?['amount'] ?? '0'),
+        double.parse(parsedJson['subtotalPrice']?['amount'] ?? '0'),
         totalTax: double.parse(parsedJson['totalTax']?['amount'] ?? '0'),
         totalPrice: double.parse(parsedJson['totalPrice']?['amount'] ?? '0'),
         paymentDue: double.parse(parsedJson['paymentDue']?['amount'] ?? '0'),
@@ -52,8 +53,8 @@ class CheckoutCart {
         currencyCode: parsedJson['currencyCode'],
         lineItems: parsedJson['lineItems']?['nodes'] != null
             ? List.from(parsedJson['lineItems']['nodes'])
-                .map((x) => ProductItem.fromShopifyJson(x))
-                .toList()
+            .map((x) => ProductItem.fromShopifyJson(x))
+            .toList()
             : null,
         shippingAddress: parsedJson['shippingAddress'] != null
             ? Address.fromShopifyJson(parsedJson['shippingAddress'])

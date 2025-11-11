@@ -1,7 +1,6 @@
 // ignore_for_file: prefer_single_quotes, lines_longer_than_80_chars final
 Map<String, dynamic> environment = {
-  "appConfig":
-      "https://shopify.empowerkw.com/shops/exceedtoystore.com/config_ar.json",
+  "appConfig": "https://raw.githubusercontent.com/amrosaab/ExceedApp/refs/heads/master/config_ar.json",
   "serverConfig": {
     "url": "https://exceedtoystore.com/",
     "type": "shopify",
@@ -312,8 +311,8 @@ Map<String, dynamic> environment = {
   "paymentConfig": {
     "DefaultCountryISOCode": "KW",
     "DefaultStateISOCode": "",
-    "EnableShipping": true,
-    "EnableAddress": true,
+    "EnableShipping": false,
+    "EnableAddress": false,
     "EnableCustomerNote": true,
     "EnableAddressLocationNote": false,
     "EnableAlphanumericZipCode": false,

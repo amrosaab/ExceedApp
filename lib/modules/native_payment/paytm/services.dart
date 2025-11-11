@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert' as convert;
 
 import 'package:flutter/services.dart';
-import 'package:paytm_allinonesdk/paytm_allinonesdk.dart';
 
 import '../../../common/config.dart';
 import '../../../common/constants.dart';
@@ -53,9 +52,9 @@ class PayTmServices {
         var callbackUrl = !isProduction
             ? 'https://securegw-stage.paytm.in/theia/paytmCallback?ORDER_ID=$orderId'
             : 'https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=$orderId';
-        var value = await AllInOneSdk.startTransaction(merchantId, orderId,
-            amount, txnToken, callbackUrl, !isProduction, restrictAppInvoke);
-        return value;
+        // var value = await AllInOneSdk.startTransaction(merchantId, orderId,
+        //     amount, txnToken, callbackUrl, !isProduction, restrictAppInvoke);
+        return null;
       } else {
         throw "Can't generate txn token";
       }

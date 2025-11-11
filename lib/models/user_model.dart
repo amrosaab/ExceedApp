@@ -106,9 +106,9 @@ class UserModel with ChangeNotifier {
         case LoginStatus.success:
           final accessToken = await FacebookAuth.instance.accessToken;
 
-          Services().firebase.loginFirebaseFacebook(token: accessToken!.token);
+          Services().firebase.loginFirebaseFacebook(token: accessToken!.tokenString);
 
-          user = await _service.api.loginFacebook(token: accessToken.token);
+          user = await _service.api.loginFacebook(token: accessToken.tokenString);
 
           await saveUser(user);
           success!(user);
@@ -128,7 +128,7 @@ class UserModel with ChangeNotifier {
 
   Future<void> loginGoogle({Function? success, Function? fail, context}) async {
     try {
-      var googleSignIn = GoogleSignIn(scopes: ['email']);
+      var googleSignIn = GoogleSignIn.instance;
 
       /// Need to disconnect or cannot login with another account.
       try {
@@ -137,14 +137,14 @@ class UserModel with ChangeNotifier {
         // ignore.
       }
 
-      var res = await googleSignIn.signIn();
+      var res = await googleSignIn.authenticate();
 
       if (res == null) {
         fail!(S.of(context).loginCanceled);
       } else {
         var auth = await res.authentication;
-        Services().firebase.loginFirebaseGoogle(token: auth.accessToken);
-        user = await _service.api.loginGoogle(token: auth.accessToken);
+        Services().firebase.loginFirebaseGoogle(token: auth.idToken);
+        user = await _service.api.loginGoogle(token: auth.idToken);
         await saveUser(user);
         success!(user);
         notifyListeners();

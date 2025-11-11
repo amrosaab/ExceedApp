@@ -3,7 +3,6 @@ import 'dart:convert' as convert;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_paystack/flutter_paystack.dart';
 import 'package:pay_with_paystack/pay_with_paystack.dart';
 import 'package:provider/provider.dart';
 
@@ -17,7 +16,7 @@ class PayStackServices {
 
   var publicKey = kPayStackConfig['publicKey'];
   var secretKey = kPayStackConfig['secretKey'];
-  final _plugin = PaystackPlugin();
+  // final _plugin = PaystackPlugin();
 
   final domain = Services().api.domain;
   final String amount;
@@ -72,53 +71,53 @@ class PayStackServices {
       if (kPayStackConfig['enableMobileMoney'] == true) {
         var response = '';
         onLoading(false);
-        await PayWithPayStack().now(
-            context: context,
-            secretKey: secretKey,
-            customerEmail: email!,
-            reference: accessCode!,
-            currency: currency!,
-            amount: (double.parse(amount) * 100).toString(),
-            paymentChannel: ['mobile_money', 'card'],
-            transactionCompleted: () async {
-              debugPrint('Payment Successful');
-              response = 'Success';
-              onLoading(true);
-              await _verifyPayStackTransaction({'reference': accessCode});
-              onLoading(false);
-              return;
-            },
-            transactionNotCompleted: () {
-              debugPrint('Payment Unsuccessful');
-              response = 'Payment Unsuccessful';
-              return;
-            });
+        // await PayWithPayStack().now(
+        //     context: context,
+        //     secretKey: secretKey,
+        //     customerEmail: email!,
+        //     reference: accessCode!,
+        //     currency: currency!,
+        //     amount: (double.parse(amount) * 100).toString(),
+        //     paymentChannel: ['mobile_money', 'card'],
+        //     transactionCompleted: () async {
+        //       debugPrint('Payment Successful');
+        //       response = 'Success';
+        //       onLoading(true);
+        //       await _verifyPayStackTransaction({'reference': accessCode});
+        //       onLoading(false);
+        //       return;
+        //     },
+        //     transactionNotCompleted: () {
+        //       debugPrint('Payment Unsuccessful');
+        //       response = 'Payment Unsuccessful';
+        //       return;
+        //     });
         if (response == 'Success') {
           return;
         } else {
           throw response;
         }
       } else {
-        await _plugin.initialize(publicKey: publicKey);
-        var charge = Charge()
-          ..amount = double.parse(amount).toInt() * 100
-          ..accessCode = accessCode
-          ..email = email
-          ..currency = currency;
-        onLoading(false);
-        var response = await _plugin.checkout(
-          context,
-          method: CheckoutMethod.selectable,
-          charge: charge,
-        );
-        if (response.status == true && response.message == 'Success') {
-          onLoading(true);
-          await _verifyPayStackTransaction({'reference': response.reference});
-          onLoading(false);
-          return;
-        } else {
-          throw response.message;
-        }
+        // await _plugin.initialize(publicKey: publicKey);
+        // var charge = Charge()
+        //   ..amount = double.parse(amount).toInt() * 100
+        //   ..accessCode = accessCode
+        //   ..email = email
+        //   ..currency = currency;
+        // onLoading(false);
+        // var response = await _plugin.checkout(
+        //   context,
+        //   method: CheckoutMethod.selectable,
+        //   charge: charge,
+        // );
+        // if (response.status == true && response.message == 'Success') {
+        //   onLoading(true);
+        //   await _verifyPayStackTransaction({'reference': response.reference});
+        //   onLoading(false);
+        //   return;
+        // } else {
+        //   throw response.message;
+        // }
       }
     } catch (e) {
       onLoading(false);

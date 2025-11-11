@@ -10,7 +10,7 @@ import 'package:fstore/models/entities/store_arguments.dart';
 import 'package:fstore/routes/flux_navigate.dart';
 import 'package:fstore/screens/blog/views/blog_detail_screen.dart';
 import 'package:fstore/services/index.dart';
-import 'package:share/share.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../dynamic_link_service.dart';
 

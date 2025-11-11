@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../common/config.dart' show kAdvanceConfig, kShopifyPaymentConfig;
 import '../../../common/constants.dart';
+import '../../../data/boxes.dart';
 import '../../../generated/l10n.dart';
 import '../../../models/cart/cart_model_shopify.dart';
 import '../../../models/entities/index.dart';
@@ -51,6 +52,8 @@ class ShopifyService extends BaseServices {
 
   @override
   String get languageCode => super.languageCode.toUpperCase();
+  String? get countryCode => SettingsBox().countryCode;
+
 
   final _cacheCursorWithCategories = <String, String?>{};
   final _cacheCursorWithSearch = <String, String?>{};
@@ -922,124 +925,186 @@ class ShopifyService extends BaseServices {
     return checkout;
   }
 
-  Future addItemsToCart(CartModelShopify cartModel) async {
-    final cookie = cartModel.user?.cookie;
+  Future<Map<String, dynamic>> linkCartWithUser(String cartId, String customerAccessToken) async {
     try {
-      if (cookie != null) {
-        var lineItems = [];
+      // 1. Clean cart ID (remove query parameters if present)
+      final cleanCartId = cartId.split('?').first;
+      print('Linking cart: ${cleanCartId.substring(0, 30)}...');
 
-        printLog('addItemsToCart productsInCart ${cartModel.productsInCart}');
-        printLog(
-            'addItemsToCart productVariationInCart ${cartModel.productVariationInCart}');
-
-        for (var productId in cartModel.productVariationInCart.keys) {
-          var variant = cartModel.productVariationInCart[productId]!;
-          var productCart = cartModel.productsInCart[productId];
-
-          printLog('addItemsToCart $variant');
-
-          lineItems.add({'variantId': variant.id, 'quantity': productCart});
-        }
-
-        printLog('addItemsToCart lineItems $lineItems');
-        final options = MutationOptions(
-          document: gql(ShopifyQuery.createCheckout),
-          variables: {
-            'input': {
-              'lineItems': lineItems,
-              if (cartModel.address != null) ...{
-                'email': cartModel.address!.email,
+      // 2. Execute the mutation
+      final result = await client.mutate(
+        MutationOptions(
+          document: gql("""
+          mutation cartLinkUser(\$cartId: ID!, \$token: String!) {
+            cartBuyerIdentityUpdate(
+              cartId: \$cartId,
+              buyerIdentity: { customerAccessToken: \$token }
+            ) {
+              cart {
+                id
+                checkoutUrl
+                lines(first: 99) {
+                  edges {
+                    node {
+                      id
+                      quantity
+                      merchandise {
+                        ... on ProductVariant {
+                          id
+                          title
+                          product {
+                            title
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
-            },
-            'langCode': cartModel.langCode?.toUpperCase()
+              userErrors {
+                field
+                message
+              }
+            }
+          }
+        """),
+          variables: {
+            'cartId': cleanCartId,
+            'token': customerAccessToken,
           },
-        );
+        ),
+      );
 
-        final result = await client.mutate(options);
+      // 3. Handle response
+      final response = result.data?['cartBuyerIdentityUpdate'];
 
-        if (result.hasException) {
-          printLog(result.exception.toString());
-          throw Exception(result.exception.toString());
+      if (response?['userErrors']?.isNotEmpty ?? false) {
+        throw Exception(response['userErrors'][0]['message']);
+      }
+
+      final cartData = response?['cart'];
+      if (cartData == null) throw Exception('No cart data received');
+
+      print('Cart linked successfully! Items: ${cartData['lines']['edges'].length}');
+      return cartData;
+
+    } catch (e, stack) {
+      print('Cart Link Error: $e');
+      print('Stack Trace: $stack');
+      rethrow;
+    }
+  }
+  Future<CheckoutCart> addItemsToCart(
+      CartModelShopify cartModel, )
+  async {
+    final cookie = cartModel.user?.cookie;
+
+    try {
+      if (cookie == null) {
+        throw Exception('User not authenticated');
+      }
+
+      printLog('Products in cart: ${cartModel.productsInCart}');
+      printLog('Variants in cart: ${cartModel.productVariationInCart}');
+
+      // Prepare line items
+      final lineItems = cartModel.productVariationInCart.entries.map((entry) {
+        final productId = entry.key;
+        final variant = entry.value;
+        final quantity = cartModel.productsInCart[productId] ?? 1;
+
+        if (variant?.id == null || variant!.id!.isEmpty) {
+          throw Exception('Invalid variant ID for product $productId');
         }
 
-        final checkout = result.data!['checkoutCreate']['checkout'];
+        // Ensure proper variant ID format
+        final merchandiseId = variant.id!.startsWith('gid://shopify/ProductVariant/')
+            ? variant.id!
+            : 'gid://shopify/ProductVariant/${variant.id}';
 
-        printLog('addItemsToCart checkout $checkout');
+        return {
+          'merchandiseId': merchandiseId,
+          'quantity': quantity,
+        };
+      }).toList();
 
-        // start link checkout with user
-        final newCheckout = await (checkoutLinkUser(checkout['id'], cookie));
+      printLog('Prepared line items: $lineItems');
 
-        return CheckoutCart.fromJsonShopify(newCheckout ?? {});
-      } else {
-        throw ('You need to login to checkout');
+      // Define mutation with language and country context
+      final options = MutationOptions(
+        document: gql('''
+        mutation createCart(\$lines: [CartLineInput!]!, \$country: CountryCode, \$language: LanguageCode)
+        @inContext(country: \$country, language: \$language) {
+          cartCreate(input: {lines: \$lines}) {
+            cart {
+              id
+              checkoutUrl
+              lines(first: 100) {
+                edges {
+                  node {
+                    id
+                    quantity
+                    merchandise {
+                      ... on ProductVariant {
+                        id
+                        title
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      '''),
+        variables: {
+          'lines': lineItems,
+          'country': countryCode,
+          'language': languageCode,
+        },
+      );
+
+      final result = await client.mutate(options);
+
+      if (result.hasException) {
+        final errors = result.exception?.graphqlErrors ?? [];
+        if (errors.isNotEmpty) {
+          final errorMessages = errors.map((e) => e.message).join(', ');
+          throw Exception('GraphQL errors: $errorMessages');
+        }
+        throw Exception('Failed to create cart: ${result.exception}');
       }
-    } catch (e) {
-      printLog('::::addItemsToCart shopify error');
-      printLog(e.toString());
+
+      final cartData = result.data?['cartCreate']?['cart'];
+      if (cartData == null) {
+        throw Exception('No cart data received');
+      }
+
+      return CheckoutCart.fromJsonShopify(cartData,langCode: languageCode);
+    } catch (e, stack) {
+      printLog('Error in addItemsToCart: $e');
+      printLog('Stack trace: $stack');
       rethrow;
     }
   }
 
-  Future updateItemsToCart(CartModelShopify cartModel, String? cookie) async {
+
+  Future<CheckoutCart> updateItemsToCart(CartModelShopify cartModel, String? cookie) async {
     try {
-      if (cookie != null) {
-        var lineItems = [];
-        var checkoutId = cartModel.checkout!.id;
-
-        printLog(
-            'updateItemsToCart productsInCart ${cartModel.productsInCart}');
-        printLog(
-            'updateItemsToCart productVariationInCart ${cartModel.productVariationInCart}');
-
-        for (var productId in cartModel.productVariationInCart.keys) {
-          var variant = cartModel.productVariationInCart[productId]!;
-          var productCart = cartModel.productsInCart[productId];
-
-          printLog('updateItemsToCart $variant');
-
-          lineItems.add({'variantId': variant.id, 'quantity': productCart});
-        }
-
-        printLog('updateItemsToCart lineItems $lineItems');
-
-        final options = MutationOptions(
-          document: gql(ShopifyQuery.updateCheckout),
-          variables: <String, dynamic>{
-            'lineItems': lineItems,
-            'checkoutId': checkoutId
-          },
-        );
-
-        final result = await client.mutate(options);
-
-        if (result.hasException) {
-          printLog(result.exception.toString());
-          throw Exception(result.exception.toString());
-        }
-
-        var checkout = result.data!['checkoutLineItemsReplace']['checkout'];
-
-        /// That case happen when user close and open app again
-        if (checkout == null) {
-          return await addItemsToCart(cartModel);
-        }
-
-        final checkoutCart = CheckoutCart.fromJsonShopify(checkout);
-
-        if (checkoutCart.email == null) {
-          // start link checkout with user
-          final newCheckout = await (checkoutLinkUser(checkout['id'], cookie));
-
-          return CheckoutCart.fromJsonShopify(newCheckout ?? {});
-        }
-
-        return checkoutCart;
-      } else {
-        throw S.current.youNeedToLoginCheckout;
+      if (cookie == null) {
+        throw Exception('User not authenticated');
       }
-    } catch (err) {
-      printLog('::::updateItemsToCart shopify error');
-      printLog(err.toString());
+
+      // For updates, we'll simply create a new cart with all current items
+      // This ensures we always have a clean state
+      return await addItemsToCart(cartModel);
+
+    } catch (e) {
+      printLog('updateItemsToCart error: $e');
       rethrow;
     }
   }
@@ -1110,7 +1175,8 @@ class ShopifyService extends BaseServices {
     String? checkoutId,
     String? note,
     DateTime? deliveryDate,
-  }) async {
+  })
+  async {
     var deliveryInfo = [];
     if (deliveryDate != null) {
       final dateFormat = DateFormat(DateTimeFormatConstants.ddMMMMyyyy);
@@ -1136,9 +1202,9 @@ class ShopifyService extends BaseServices {
       ];
     }
     final options = MutationOptions(
-      document: gql(ShopifyQuery.updateCheckoutAttribute),
+      document: gql(ShopifyQuery.updateCartAttributes), // تحديث للاستعلام
       variables: <String, dynamic>{
-        'checkoutId': checkoutId,
+        'cartId': checkoutId,
         'input': {
           'note': note,
           if (deliveryDate != null) 'customAttributes': deliveryInfo,
@@ -1154,15 +1220,17 @@ class ShopifyService extends BaseServices {
     }
   }
 
+
   @override
   Future<void> updateCheckoutEmail({
     required String checkoutId,
     required String email,
-  }) async {
+  })
+  async {
     final options = MutationOptions(
-      document: gql(ShopifyQuery.updateCheckoutEmail),
+      document: gql(ShopifyQuery.updateCartBuyerIdentity), // تحديث للاستعلام
       variables: <String, dynamic>{
-        'checkoutId': checkoutId,
+        'cartId': checkoutId,
         'email': email,
       },
     );
@@ -1174,7 +1242,6 @@ class ShopifyService extends BaseServices {
       throw (result.exception.toString());
     }
   }
-
   // Shopify does not support social login
   // @override
   // Future<User> loginGoogle({String? token}) async {

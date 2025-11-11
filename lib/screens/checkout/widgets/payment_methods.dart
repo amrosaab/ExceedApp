@@ -634,24 +634,24 @@ class _PaymentMethodsState extends State<PaymentMethods>  {
             paid: false,
             onFinish: (Order? order) async {
               if (order != null) {
-                final flutterwaveServices = FlutterwaveServices(
-                    amount: cartModel.getTotal()!.toString(),
-                    orderId: order.id!,
-                    email: cartModel.address?.email,
-                    name: cartModel.address?.fullName,
-                    phone: cartModel.address?.phoneNumber,
-                    currency: cartModel.currencyCode,
-                    paymentMethod: paymentMethod.title);
-                try {
-                  await flutterwaveServices.openPayment(
-                      context, widget.onLoading!);
-                  widget.onFinish!(order);
-                } catch (e) {
-                  Tools.showSnackBar(
-                      ScaffoldMessenger.of(context), e.toString());
-                  isPaying = false;
-                  unawaited(_deletePendingOrder(order.id));
-                }
+                // final flutterwaveServices = FlutterwaveServices(
+                //     amount: cartModel.getTotal()!.toString(),
+                //     orderId: order.id!,
+                //     email: cartModel.address?.email,
+                //     name: cartModel.address?.fullName,
+                //     phone: cartModel.address?.phoneNumber,
+                //     currency: cartModel.currencyCode,
+                //     paymentMethod: paymentMethod.title);
+                // try {
+                //   await flutterwaveServices.openPayment(
+                //       context, widget.onLoading!);
+                //   widget.onFinish!(order);
+                // } catch (e) {
+                //   Tools.showSnackBar(
+                //       ScaffoldMessenger.of(context), e.toString());
+                //   isPaying = false;
+                //   unawaited(_deletePendingOrder(order.id));
+                // }
               }
             });
         return;
